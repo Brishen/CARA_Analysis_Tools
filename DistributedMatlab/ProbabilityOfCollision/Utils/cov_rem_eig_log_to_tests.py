@@ -318,7 +318,7 @@ def test_cov_rem_eig_val_clip(case: dict[str, Any]) -> None:
 
     case_id = case.get('id', 'CovRemEigValClip-case')
     for name, actual, expected in zip(_OUTPUT_ORDER, actual_values, expected_values):
-        _assert_equivalent(actual, expected, f"{{case_id}}::{name}")
+        _assert_equivalent(actual, expected, f"{{case_id}}::{{name}}")
 """)
     return header + helpers
 
