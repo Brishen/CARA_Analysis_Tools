@@ -125,6 +125,8 @@ if (Nargin < 2); Lclip = []; end
 if (Nargin < 3); Lraw  = []; end
 if (Nargin < 4); Vraw  = []; end
 
+originalLclipInput = Lclip;
+
 if isempty(Lclip)
     Lclip = 0;
 elseif ~isreal(Lclip)
@@ -164,6 +166,9 @@ end
 
 % Calculate the eigen-decomposition of Araw, if not input
 
+originalLrawInput = Lraw;
+originalVrawInput = Vraw;
+
 if isemptyLraw
     [Vraw,Draw] = eig(Araw);
     Lraw = diag(Draw);
@@ -198,36 +203,73 @@ end
 
 Nargout = nargout;
 
-if (Nargout < 6)
-    return;
+Adet = [];
+if (Nargout >= 6)
+    % Determinant of remediated covariance (6th item in output argument list)
+    Adet = prod(Lrem);
 end
 
-% Determinant of remediated covariance (6th item in output argument list)
-
-Adet = prod(Lrem);
-
-if (Nargout < 7)
-    return;
+Ainv = [];
+if (Nargout >= 7)
+    % Inverse of remediated covariance (7th item in output argument list)
+    Ainv = Vraw * diag(1./Lrem) * Vraw';
 end
 
-% Inverse of remediated covariance (7th item in output argument list)
-
-Ainv = Vraw * diag(1./Lrem) * Vraw';
-
-if (Nargout < 8)
-    return;
+Arem = [];
+if (Nargout >= 8)
+    % Remediated covariance (8th item in output argument list)
+    if ClipStatus
+        % Clipping performed - calculate the remediated covariance using the
+        % original eigenvectors
+        Arem = Vraw * diag(Lrem) * Vraw';
+    else
+        % No clipping performed - use raw covariance as remediated covariance
+        Arem = Araw;
+    end
 end
 
-% Remediated covariance (8th item in output argument list)
+logInputs = struct('Araw',Araw,'Lclip',originalLclipInput,'Lraw',originalLrawInput,...
+                   'Vraw',originalVrawInput,'nargin',Nargin);
+logOutputs = struct('Lrem',Lrem,'Lraw',Lraw,'Vraw',Vraw,...
+                    'PosDefStatus',PosDefStatus,'ClipStatus',ClipStatus,...
+                    'Adet',Adet,'Ainv',Ainv,'Arem',Arem,'nargout',Nargout);
 
-if ClipStatus
-    % Clipping performed - calculate the remediated covariance using the
-    % original eigenvectors
-    Arem = Vraw * diag(Lrem) * Vraw';
-else
-    % No clipping performed - use raw covariance as remediated covariance
-    Arem = Araw;
-end
-    
+logCovRemEigValClip(logInputs,logOutputs);
+
 return;
 end
+
+function logCovRemEigValClip(inputs,outputs)
+%LOGCOVREMEIGVALCLIP Log function inputs and outputs for unit testing.
+
+persistent logFilePath
+
+if isempty(logFilePath)
+    [thisDir,~] = fileparts(mfilename('fullpath'));
+    logFilePath = fullfile(thisDir,'CovRemEigValClip.log');
+end
+
+logEntry = struct('timestamp',datestr(now,'yyyy-mm-ddTHH:MM:SS.FFF'),...
+                  'inputs',inputs,'outputs',outputs);
+
+try
+    jsonEntry = jsonencode(logEntry);
+catch jsonErr
+    warning('CovRemEigValClip:JSONEncodingFailed','%s',jsonErr.message);
+    return;
+end
+
+fid = fopen(logFilePath,'a');
+if fid == -1
+    warning('CovRemEigValClip:LogFileOpenFailed',...
+            'Unable to open log file: %s',logFilePath);
+    return;
+end
+
+cleanupObj = onCleanup(@() fclose(fid));
+
+fprintf(fid,'%s\n',jsonEntry);
+
+clear cleanupObj;
+end
+
