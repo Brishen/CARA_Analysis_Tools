@@ -161,14 +161,23 @@ def CovRemEigValClip(
         raise ValueError("Eigenvalues and eigenvectors must be real")
 
     min_eig = float(np.min(Lraw_array))
-    pos_def_status = int(np.sign(min_eig))
+    max_abs = float(np.max(np.abs(Lraw_array))) if Lraw_array.size else 0.0
+    atol = np.finfo(float).eps * max(1.0, max_abs)
+    if min_eig >= -atol:
+        pos_def_status = 1
+    else:
+        pos_def_status = -1
 
     Lrem_array = np.array(Lraw_array, copy=True)
-    clip_mask = Lrem_array < Lclip_value
+    clip_threshold = Lclip_value - atol
+    clip_mask = Lrem_array < clip_threshold
     if np.any(clip_mask):
         Lrem_array[clip_mask] = Lclip_value
         clip_status = True
     else:
+        close_mask = (Lrem_array < Lclip_value) & (Lrem_array >= clip_threshold)
+        if np.any(close_mask):
+            Lrem_array[close_mask] = Lclip_value
         clip_status = False
 
     Adet_value = float(np.prod(Lrem_array))
