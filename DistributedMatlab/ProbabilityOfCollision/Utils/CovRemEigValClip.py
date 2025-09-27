@@ -2,11 +2,7 @@
 
 from __future__ import annotations
 
-import json
-from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any, Dict
-import warnings
 
 import numpy as np
 
@@ -56,43 +52,7 @@ def _serialise(value: Any) -> Any:
     return value
 
 
-_log_file_path: Path | None = None
 
-
-def _log_invocation(inputs: Dict[str, Any], outputs: Dict[str, Any]) -> None:
-    """Log function inputs and outputs to mirror the MATLAB implementation."""
-
-    global _log_file_path
-
-    try:
-        json_inputs = {key: _serialise(val) for key, val in inputs.items()}
-        json_outputs = {key: _serialise(val) for key, val in outputs.items()}
-        log_entry = {
-            "timestamp": datetime.now(UTC).strftime("%Y-%m-%dT%H:%M:%S.%f")[:-3],
-            "inputs": json_inputs,
-            "outputs": json_outputs,
-        }
-        encoded = json.dumps(log_entry)
-    except (TypeError, ValueError) as exc:  # pragma: no cover - defensive
-        warnings.warn(
-            f"CovRemEigValClip:JSONEncodingFailed: {exc}",
-            RuntimeWarning,
-            stacklevel=2,
-        )
-        return
-
-    if _log_file_path is None:
-        _log_file_path = Path(__file__).with_suffix(".log")
-
-    try:
-        with _log_file_path.open("a", encoding="utf-8") as handle:
-            handle.write(encoded + "\n")
-    except OSError as exc:  # pragma: no cover - defensive
-        warnings.warn(
-            f"CovRemEigValClip:LogFileOpenFailed: {exc}",
-            RuntimeWarning,
-            stacklevel=2,
-        )
 
 
 def CovRemEigValClip(
@@ -195,20 +155,6 @@ def CovRemEigValClip(
         Arem_array = eigvecs @ np.diag(Lrem_array) @ eigvecs.T
     else:
         Arem_array = np.array(Araw_array, copy=True)
-
-    outputs: Dict[str, Any] = {
-        "Lrem": Lrem_array,
-        "Lraw": Lraw_array,
-        "Vraw": eigvecs,
-        "PosDefStatus": pos_def_status,
-        "ClipStatus": clip_status,
-        "Adet": Adet_value,
-        "Ainv": Ainv_array,
-        "Arem": Arem_array,
-        "nargout": len(_OUTPUT_ORDER),
-    }
-
-    _log_invocation(original_inputs, outputs)
 
     return {
         "Lrem": Lrem_array,
