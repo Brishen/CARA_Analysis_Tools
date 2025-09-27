@@ -74,7 +74,16 @@ function [tau0,tau1,tau0_gam1,tau1_gam1] = ...
 
 % Set defaults
 
-if (nargin < 6); verbose = false; end
+Nargin = nargin;
+Nargout = nargout;
+
+if (Nargin < 6)
+    originalVerboseInput = [];
+else
+    originalVerboseInput = verbose;
+end
+
+if (Nargin < 6); verbose = false; end
 
 if verbose
     disp(' ');
@@ -102,6 +111,15 @@ if (v0mag < 100*eps)
     tau1(:)   =  Inf;
     tau0_gam1 = -Inf;
     tau1_gam1 =  Inf;
+
+    logInputs = struct('gamma',gamma,'HBR',HBR,'rci',rci,'vci',vci,...
+                       'Pci',Pci,'verbose',originalVerboseInput,...
+                       'nargin',Nargin);
+    logOutputs = struct('tau0',tau0,'tau1',tau1,'tau0_gam1',tau0_gam1,...
+                        'tau1_gam1',tau1_gam1,'effectiveVerbose',verbose,...
+                        'nargout',Nargout);
+
+    logConjBoundsCoppola(logInputs,logOutputs);
     return;
 end
 
@@ -187,7 +205,50 @@ for ng=1:Ngamma
     
 end
 
+logInputs = struct('gamma',gamma,'HBR',HBR,'rci',rci,'vci',vci,...
+                   'Pci',Pci,'verbose',originalVerboseInput,...
+                   'nargin',Nargin);
+logOutputs = struct('tau0',tau0,'tau1',tau1,'tau0_gam1',tau0_gam1,...
+                    'tau1_gam1',tau1_gam1,'effectiveVerbose',verbose,...
+                    'nargout',Nargout);
+
+logConjBoundsCoppola(logInputs,logOutputs);
+
 return;
+end
+
+function logConjBoundsCoppola(inputs,outputs)
+%LOGCONJBOUNDSCOPPOLA Log function inputs and outputs for unit testing.
+
+persistent logFilePath
+
+if isempty(logFilePath)
+    [thisDir,~] = fileparts(mfilename('fullpath'));
+    logFilePath = fullfile(thisDir,'conj_bounds_Coppola.log');
+end
+
+logEntry = struct('timestamp',datestr(now,'yyyy-mm-ddTHH:MM:SS.FFF'),...
+                  'inputs',inputs,'outputs',outputs);
+
+try
+    jsonEntry = jsonencode(logEntry);
+catch jsonErr
+    warning('conj_bounds_Coppola:JSONEncodingFailed','%s',jsonErr.message);
+    return;
+end
+
+fid = fopen(logFilePath,'a');
+if fid == -1
+    warning('conj_bounds_Coppola:LogFileOpenFailed',...
+            'Unable to open log file: %s',logFilePath);
+    return;
+end
+
+cleanupObj = onCleanup(@() fclose(fid));
+
+fprintf(fid,'%s\n',jsonEntry);
+
+clear cleanupObj;
 end
 
 % ----------------- END OF CODE -----------------
@@ -200,6 +261,7 @@ end
 % ---------------------------------------------------
 % T. Lechtenberg | 12-13-2019 | Initial development
 % E. White       | 08-07-2023 | Added compliant documentation
+% OpenAI Assist. | 04-06-2024 | Added invocation logging support
 
 % =========================================================================
 %
