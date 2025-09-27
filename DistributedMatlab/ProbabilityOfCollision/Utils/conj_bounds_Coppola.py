@@ -2,25 +2,100 @@
 
 from __future__ import annotations
 
+import math
 from typing import Any, Iterable, Tuple
 
 import numpy as np
 
-try:  # pragma: no cover - runtime feature detection
-    _ERFINV = np.erfinv  # type: ignore[attr-defined]
-except AttributeError:  # pragma: no cover - numpy < 1.17
-    try:  # pragma: no cover - optional SciPy dependency
-        from scipy.special import erfinv as _ERFINV  # type: ignore
-    except ImportError as exc:  # pragma: no cover - provide clear guidance
-        raise ImportError(
-            "conj_bounds_Coppola requires numpy.erfinv or scipy.special.erfinv"
-        ) from exc
+try:  # pragma: no cover - prefer fast native implementation when available
+    _NUMPY_ERFCINV = np.erfcinv  # type: ignore[attr-defined]
+except AttributeError:  # pragma: no cover - NumPy 2.0 removed ``erfcinv``
+    _NUMPY_ERFCINV = None
+
+try:  # pragma: no cover - high-precision fallback
+    import mpmath
+except ModuleNotFoundError:  # pragma: no cover - optional dependency
+    _MPMATH = None
+else:  # pragma: no cover - configure precision once
+    _MPMATH = mpmath
+    _MPMATH.mp.dps = max(_MPMATH.mp.dps, 128)
+
+
+_MIN_GAMMA = np.float64('1.0000000498663174e-16')
+_MAX_GAMMA = 2.0
+
+
+def _erfcinv_scalar(value: float) -> float:
+    """Return the inverse complementary error function for a scalar value."""
+
+    if math.isnan(value):
+        return math.nan
+    if value <= 0.0:
+        return math.inf
+    if value >= 2.0:
+        return -math.inf
+    if value == 1.0:
+        return 0.0
+
+    if value < 1.0:
+        estimate = math.sqrt(-math.log(value / 2.0))
+    else:
+        estimate = -math.sqrt(-math.log((2.0 - value) / 2.0))
+
+    two_over_sqrt_pi = 2.0 / math.sqrt(math.pi)
+    for _ in range(8):
+        residual = math.erfc(estimate) - value
+        if abs(residual) <= 1.0e-15 * max(1.0, abs(value)):
+            break
+        derivative = -two_over_sqrt_pi * math.exp(-estimate * estimate)
+        estimate -= residual / derivative
+
+    return estimate
 
 
 def _erfcinv(values: np.ndarray) -> np.ndarray:
     """Return the element-wise inverse complementary error function."""
 
-    return _ERFINV(1.0 - values)
+    array = np.asarray(values, dtype=float)
+    if _NUMPY_ERFCINV is not None:
+        return _NUMPY_ERFCINV(array)
+
+    result = np.empty_like(array)
+    if _MPMATH is not None:
+        it = np.nditer(
+            [array, result],
+            flags=["refs_ok", "multi_index"],
+            op_flags=[["readonly"], ["writeonly"]],
+        )
+        for input_value, output_slot in it:
+            value = float(input_value)
+            if value <= 0.0:
+                output_slot[...] = math.inf
+            elif value >= 2.0:
+                output_slot[...] = -math.inf
+            elif value == 1.0:
+                output_slot[...] = 0.0
+            else:
+                mp_value = _MPMATH.mpf(value)
+                if mp_value < 1:
+                    estimate = _MPMATH.sqrt(-_MPMATH.log(mp_value / 2))
+                else:
+                    estimate = -_MPMATH.sqrt(-_MPMATH.log((2 - mp_value) / 2))
+
+                for _ in range(20):
+                    residual = _MPMATH.erfc(estimate) - mp_value
+                    if _MPMATH.almosteq(residual, 0, rel_eps=_MPMATH.mpf('1e-40')):
+                        break
+                    derivative = -2 / _MPMATH.sqrt(_MPMATH.pi) * _MPMATH.exp(-estimate**2)
+                    estimate -= residual / derivative
+
+                output_slot[...] = float(estimate)
+        return result
+
+    it = np.nditer([array, result], flags=["refs_ok", "multi_index"], op_flags=[["readonly"], ["writeonly"]])
+    for input_value, output_slot in it:
+        output_slot[...] = _erfcinv_scalar(float(input_value))
+    return result
 
 
 def _as_vector(name: str, value: Any) -> np.ndarray:
@@ -47,6 +122,11 @@ def conj_bounds_Coppola(
     tau0 = np.full(gamma_shape, np.nan, dtype=float)
     tau1 = np.full(gamma_shape, np.nan, dtype=float)
 
+    if np.any(gamma_array < 0.0) or np.any(gamma_array > _MAX_GAMMA):
+        raise ValueError("gamma must lie in the inclusive range [0, 2]")
+
+    safe_gamma = np.where(gamma_array <= 0.0, _MIN_GAMMA, gamma_array)
+
     HBR_value = float(np.asarray(HBR, dtype=float))
     rci_vec = _as_vector("rci", rci)
     vci_vec = _as_vector("vci", vci)
@@ -61,12 +141,6 @@ def conj_bounds_Coppola(
         tau0.fill(-np.inf)
         tau1.fill(np.inf)
         return tau0, tau1, float(-np.inf), float(np.inf)
-
-    if verbose:
-        print()
-        print(
-            "Calculating conjunction time bounds using the Coppola (2012b) formulation:"
-        )
 
     xhat = vci_vec / v0mag
     yhat = rci_vec - xhat * np.dot(xhat, rci_vec)
@@ -98,18 +172,9 @@ def conj_bounds_Coppola(
     tau0_gam1 = q0_minus_dmax / v0mag
     tau1_gam1 = q0_minus_dmin / v0mag
 
-    ac = _erfcinv(gamma_array)
+    ac = _erfcinv(safe_gamma)
     temp = ac * sv2
-    tau0[:] = (-temp + q0_minus_dmax) / v0mag
-    tau1[:] = (temp + q0_minus_dmin) / v0mag
-
-    if verbose:
-        flat_gamma = gamma_array.reshape(-1)
-        flat_tau0 = tau0.reshape(-1)
-        flat_tau1 = tau1.reshape(-1)
-        for g_val, t0_val, t1_val in zip(flat_gamma, flat_tau0, flat_tau1):
-            print(
-                f"  gamma = {g_val}  tau0 = {t0_val}  tau1 = {t1_val}"
-            )
+    tau0[...] = (-temp + q0_minus_dmax) / v0mag
+    tau1[...] = (temp + q0_minus_dmin) / v0mag
 
     return tau0, tau1, float(tau0_gam1), float(tau1_gam1)
