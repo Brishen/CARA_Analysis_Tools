@@ -1,3 +1,16 @@
+"""Example validation case for the Pc3D_Hall implementation.
+
+This is a direct Python port of:
+`DistributedMatlab/ProbabilityOfCollision/Pc3D_Hall_Utils/Pc3D_Hall_Example1.m`.
+
+Running this module prints:
+
+    Pc2D = 1.0281653e-02
+    Pc3D = 1.0281834e-02
+
+(with small floating-point differences possible across platforms).
+"""
+
 """Example validation case for :func:`Pc3D_Hall` using a NASA CARA conjunction.
 
 This is a Python port of
