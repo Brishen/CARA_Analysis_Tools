@@ -40,11 +40,11 @@ class TestPc3D_Hall_Case1(unittest.TestCase):
             [-0.0000000590183593374380, 0.0000000034187295427319, -0.0000607153456131910000, -0.0000000000001447705672, 0.0000000000044920403553, 0.0000000033920803457708]
         ])
 
-        HBR = 20.0
-        expSolution = 0.21180800972092886
+        HBR = 15
+        expSolution = 0.216808362760001
         Accuracy = 1e-6
 
-        Pc, out = Pc3D_Hall(r1, v1, C1, r2, v2, C2, HBR)
+        Pc, out = Pc3D_Hall(r1, v1, C1, r2, v2, C2, HBR, params={'Texpand': 6.0})
 
         # print(f"Computed Pc for Case 1: {Pc}")
         self.assertTrue(out['converged'], "Calculation did not converge")
