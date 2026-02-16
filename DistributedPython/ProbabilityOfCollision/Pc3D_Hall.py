@@ -63,6 +63,21 @@ def Pc3D_Hall(r1, v1, C1, r2, v2, C2, HBR, params=None):
     if 'verbose' not in params:
         params['verbose'] = False
 
+    # Set debug_instrumentation default
+    if 'debug_instrumentation' not in params or params['debug_instrumentation'] is None:
+        params['debug_instrumentation'] = False
+
+    if params['debug_instrumentation']:
+        if 'debug_output_file' not in params or params['debug_output_file'] is None:
+            params['debug_output_file'] = 'Pc3D_Hall_debug_py.txt'
+        # Clear the debug file
+        try:
+            with open(params['debug_output_file'], 'w'):
+                pass
+        except Exception as e:
+            import sys
+            sys.stderr.write(f"Error clearing debug file: {e}\n")
+
     # Set parameters defaults
     params = default_params_Pc3D_Hall(params)
 
@@ -127,8 +142,12 @@ def Pc3D_Hall(r1, v1, C1, r2, v2, C2, HBR, params=None):
 
     # Retrograde orbit processing
     if params['RetrogradeReorientation'] > 0:
+        if params['debug_instrumentation']:
+            dump_data('Inputs: RetrogradeReorientation', {'r1': r1, 'v1': v1, 'C1': C1, 'r2': r2, 'v2': v2, 'C2': C2, 'params': params}, params['debug_output_file'])
         # RetrogradeReorientation returns tuple (r1, v1, C1, r2, v2, C2, RRout)
         r1, v1, C1, r2, v2, C2, RRout = RetrogradeReorientation(r1, v1, C1, r2, v2, C2, params)
+        if params['debug_instrumentation']:
+            dump_data('Outputs: RetrogradeReorientation', {'r1': r1, 'v1': v1, 'C1': C1, 'r2': r2, 'v2': v2, 'C2': C2, 'RRout': RRout}, params['debug_output_file'])
         out['RetrogradeReorientation'] = RRout['Reoriented']
     else:
         out['RetrogradeReorientation'] = False
@@ -139,15 +158,23 @@ def Pc3D_Hall(r1, v1, C1, r2, v2, C2, HBR, params=None):
     # We pass flattened r/v to EquinoctialMatrices as required by its docstring, but reshape back if needed?
     # Actually EquinoctialMatrices takes array-like and flattens them.
 
+    if params['debug_instrumentation']:
+        dump_data('Inputs: EquinoctialMatrices (Primary)', {'r1': r1, 'v1': v1, 'C1': C1, 'rem_flag': params['remediate_NPD_TCA_eq_covariances']}, params['debug_output_file'])
     (out['Xmean10'], out['Pmean10'], out['Emean10'], out['Jmean10'], out['Kmean10'],
      out['Qmean10'], out['Qmean10RemStat'], out['Qmean10Raw'],
      out['Qmean10Rem'], C1Rem) = EquinoctialMatrices(r1.flatten(), v1.flatten(), C1,
                                                     params['remediate_NPD_TCA_eq_covariances'])
+    if params['debug_instrumentation']:
+        dump_data('Outputs: EquinoctialMatrices (Primary)', {'Xmean10': out['Xmean10'], 'Pmean10': out['Pmean10'], 'Emean10': out['Emean10'], 'Jmean10': out['Jmean10'], 'Kmean10': out['Kmean10'], 'Qmean10': out['Qmean10'], 'C1Rem': C1Rem}, params['debug_output_file'])
 
+    if params['debug_instrumentation']:
+        dump_data('Inputs: EquinoctialMatrices (Secondary)', {'r2': r2, 'v2': v2, 'C2': C2, 'rem_flag': params['remediate_NPD_TCA_eq_covariances']}, params['debug_output_file'])
     (out['Xmean20'], out['Pmean20'], out['Emean20'], out['Jmean20'], out['Kmean20'],
      out['Qmean20'], out['Qmean20RemStat'], out['Qmean20Raw'],
      out['Qmean20Rem'], C2Rem) = EquinoctialMatrices(r2.flatten(), v2.flatten(), C2,
                                                     params['remediate_NPD_TCA_eq_covariances'])
+    if params['debug_instrumentation']:
+        dump_data('Outputs: EquinoctialMatrices (Secondary)', {'Xmean20': out['Xmean20'], 'Pmean20': out['Pmean20'], 'Emean20': out['Emean20'], 'Jmean20': out['Jmean20'], 'Kmean20': out['Kmean20'], 'Qmean20': out['Qmean20'], 'C2Rem': C2Rem}, params['debug_output_file'])
 
     # Return unconverged if any equinoctial elements are undefined (NaN)
     if np.any(np.isnan(out['Emean10'])) or np.any(np.isnan(out['Emean20'])):
@@ -196,8 +223,12 @@ def Pc3D_Hall(r1, v1, C1, r2, v2, C2, HBR, params=None):
     # conj_bounds_Coppola returns (tau0, tau1, tau0_gam1, tau1_gam1)
     # Inputs: gamma, HBR, r, v, C, verbose
     # r, v should be 3x1 or 1x3.
+    if params['debug_instrumentation']:
+        dump_data('Inputs: conj_bounds_Coppola', {'gamma': params['gamma'], 'HBR': HBR, 'r': r, 'v': v, 'C': C}, params['debug_output_file'])
     out['tau0'], out['tau1'], out['tau0_gam1'], out['tau1_gam1'] = \
         conj_bounds_Coppola(params['gamma'], HBR, r, v, C, params['verbose'])
+    if params['debug_instrumentation']:
+        dump_data('Outputs: conj_bounds_Coppola', {'tau0': out['tau0'], 'tau1': out['tau1'], 'tau0_gam1': out['tau0_gam1'], 'tau1_gam1': out['tau1_gam1']}, params['debug_output_file'])
 
     if np.isinf(out['tau0']) or np.isinf(out['tau1']):
         warnings.warn('Pc3D_Hall:InvalidTimeBounds: Coppola conjunction time bound(s) have infinite value(s)')
@@ -460,8 +491,17 @@ def Pc3D_Hall(r1, v1, C1, r2, v2, C2, HBR, params=None):
 
     # Calc pos/vel mean states and Jacobians
     # jacobian_E0_to_Xt returns (JT, XT) where JT is (NT, 6, 6) and XT is (6, NT)
+    if params['debug_instrumentation']:
+        dump_data('Inputs: jacobian_E0_to_Xt (Primary)', {'Teph': out['Teph'], 'Emean10': out['Emean10']}, params['debug_output_file'])
     out['Jmean1T'], out['Xmean1T'] = jacobian_E0_to_Xt(out['Teph'], out['Emean10'])
+    if params['debug_instrumentation']:
+        dump_data('Outputs: jacobian_E0_to_Xt (Primary)', {'Jmean1T': out['Jmean1T'], 'Xmean1T': out['Xmean1T']}, params['debug_output_file'])
+
+    if params['debug_instrumentation']:
+        dump_data('Inputs: jacobian_E0_to_Xt (Secondary)', {'Teph': out['Teph'], 'Emean20': out['Emean20']}, params['debug_output_file'])
     out['Jmean2T'], out['Xmean2T'] = jacobian_E0_to_Xt(out['Teph'], out['Emean20'])
+    if params['debug_instrumentation']:
+        dump_data('Outputs: jacobian_E0_to_Xt (Secondary)', {'Jmean2T': out['Jmean2T'], 'Xmean2T': out['Xmean2T']}, params['debug_output_file'])
 
     # Initialize output arrays
     # In Python we can just use lists and append or preallocate
@@ -507,10 +547,28 @@ def Pc3D_Hall(r1, v1, C1, r2, v2, C2, HBR, params=None):
                 # PeakOverlapPos(t, X1, J1, 0, E1, Q1, X2, J2, 0, E2, Q2, HBR, PAR)
                 # Jmean is (NT, 6, 6) in python, so we access [neph, :, :]
                 # Jmean in MATLAB was (6, 6, NT).
+                if neph == 0 and params['debug_instrumentation']:
+                    dump_data('Inputs: PeakOverlapPos (neph=1)', {
+                        'Teph': out['Teph'][neph],
+                        'Xmean1T': out['Xmean1T'][:, neph],
+                        'Jmean1T': out['Jmean1T'][neph, :, :],
+                        'Emean10': out['Emean10'],
+                        'Qmean10': out['Qmean10'],
+                        'Xmean2T': out['Xmean2T'][:, neph],
+                        'Jmean2T': out['Jmean2T'][neph, :, :],
+                        'Emean20': out['Emean20'],
+                        'Qmean20': out['Qmean20'],
+                        'H': H,
+                        'PAR': PAR
+                    }, params['debug_output_file'])
+
                 converged, _, _, _, POP = PeakOverlapPos(out['Teph'][neph],
                     out['Xmean1T'][:, neph], out['Jmean1T'][neph, :, :], 0, out['Emean10'], out['Qmean10'],
                     out['Xmean2T'][:, neph], out['Jmean2T'][neph, :, :], 0, out['Emean20'], out['Qmean20'],
                     H, PAR)
+
+                if neph == 0 and params['debug_instrumentation']:
+                    dump_data('Outputs: PeakOverlapPos (neph=1)', {'converged': converged, 'POP': POP}, params['debug_output_file'])
 
                 out['POPconv'][neph] = converged
                 out['POPiter'][neph] = POP['iteration']
@@ -547,9 +605,13 @@ def Pc3D_Hall(r1, v1, C1, r2, v2, C2, HBR, params=None):
                     Cs = Ps[3:6, 3:6]
 
                     # CovRemEigValClip returns dict
+                    if neph == 0 and params['debug_instrumentation']:
+                        dump_data('Inputs: CovRemEigValClip (neph=1)', {'As': As, 'Lclip': Lclip}, params['debug_output_file'])
                     res = CovRemEigValClip(As, Lclip)
                     Asdet = res['Adet']
                     Asinv = res['Ainv']
+                    if neph == 0 and params['debug_instrumentation']:
+                        dump_data('Outputs: CovRemEigValClip (neph=1)', {'Asdet': Asdet, 'Asinv': Asinv}, params['debug_output_file'])
 
                     Ns0 = (twopicubed * Asdet)**(-0.5)
                     bs = Bs @ Asinv
@@ -1208,3 +1270,25 @@ def _add_eph_times(Tnew, out, need_eph_calc):
     out['Neph'] = out['Teph'].size
 
     return out, need_eph_calc
+
+def dump_data(label, data, filename):
+    import sys
+    try:
+        # Set print options to avoid truncation of large arrays
+        np.set_printoptions(threshold=sys.maxsize, linewidth=np.inf)
+        with open(filename, 'a') as f:
+            f.write(f"=== {label} ===\n")
+            for key, val in data.items():
+                f.write(f"--- {key} ---\n")
+                # Using str(val) or repr(val) might be sufficient, but let's try to match MATLAB's 'disp' style
+                # For numpy arrays, default str() is decent.
+                f.write(f"{val}\n")
+            f.write(f"=== End {label} ===\n")
+        # Reset print options to default (optional but polite)
+        np.set_printoptions(threshold=1000, linewidth=75)
+    except Exception as e:
+        # Fallback to console if file write fails, or just ignore?
+        # MATLAB version catches evalc errors but might not catch file open errors in the same way.
+        # We'll print to stderr for safety.
+        import sys
+        sys.stderr.write(f"Error writing debug data: {e}\n")
