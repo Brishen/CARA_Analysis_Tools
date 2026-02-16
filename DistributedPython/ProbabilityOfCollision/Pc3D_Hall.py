@@ -234,6 +234,11 @@ def Pc3D_Hall(r1, v1, C1, r2, v2, C2, HBR, params=None):
         Texpand = np.atleast_1d(params['Texpand'])
     NTexpand = Texpand.size
 
+    # Ncdot duration reduction factor used in convergence diagnostics
+    Ncdotgam = max(1e-6, params['gamma'])
+    x_val = np.sqrt(2) * scipy.special.erfcinv(Ncdotgam)
+    Ncdotred = np.exp(-x_val**2 / 2) / np.sqrt(2 * np.pi)
+
     bad_Texpand = False
 
     if NTexpand == 0: # 0 elements -> case 0
