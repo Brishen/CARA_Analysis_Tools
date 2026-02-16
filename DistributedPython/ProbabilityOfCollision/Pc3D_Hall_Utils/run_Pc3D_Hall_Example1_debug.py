@@ -60,7 +60,7 @@ def run_Pc3D_Hall_Example1_debug():
 
     # Define debug parameters
     debug_params = {
-        'Texpand': 1.0,
+        'Texpand': None,
         'debug_instrumentation': True,
         'debug_output_file': 'Pc3D_Hall_debug_py.txt'
     }
