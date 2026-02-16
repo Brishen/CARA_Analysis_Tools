@@ -13,3 +13,4 @@ from .eig2x2 import eig2x2
 from .set_default_param import set_default_param
 from .default_params_Pc_SDMC import default_params_Pc_SDMC
 from .get_covXcorr_parameters import get_covXcorr_parameters
+from .getLebedevSphere import getLebedevSphere
