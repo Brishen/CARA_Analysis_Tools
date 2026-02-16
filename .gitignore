@@ -1,2 +1,4 @@
 Pc3D_Hall_debug.txt
 Pc3D_Hall_debug_py.txt
+__pycache__/
+*.pyc
