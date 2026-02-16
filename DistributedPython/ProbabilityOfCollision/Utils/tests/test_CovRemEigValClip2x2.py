@@ -105,3 +105,32 @@ def test_multiple_matrices():
     ])
 
     assert np.allclose(Arem, expected_Arem)
+
+def test_array_lclip():
+    # Test vectorized behavior with array Lclip
+    # Mat 1: [2 0 3] -> No clip. Lclip=0
+    # Mat 2: [-1 0 2] -> Clip to 0.5. Lclip=0.5. Result: [0.5 0 2]
+    # Mat 3: [1 2 1] -> Clip to 1.0. Lclip=1.0. (Eigs: 3, -1 -> 3, 1)
+    # Reconstruct Mat 3: 3*v1v1' + 1*v2v2'. v1=[1 1]/s2, v2=[1 -1]/s2
+    # = 3/2 [1 1; 1 1] + 1/2 [1 -1; -1 1]
+    # = [1.5 1.5; 1.5 1.5] + [0.5 -0.5; -0.5 0.5]
+    # = [2 1; 1 2] -> [2 1 2]
+
+    Araw = np.array([
+        [2, 0, 3],
+        [-1, 0, 2],
+        [1, 2, 1]
+    ])
+    Lclip = np.array([0, 0.5, 1.0])
+
+    ClipStatus, Arem = CovRemEigValClip2x2(Araw, Lclip=Lclip)
+
+    assert np.array_equal(ClipStatus, [False, True, True])
+
+    expected_Arem = np.array([
+        [2, 0, 3],
+        [0.5, 0, 2],
+        [2, 1, 2]
+    ])
+
+    assert np.allclose(Arem, expected_Arem)
