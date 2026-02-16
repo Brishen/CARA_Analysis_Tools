@@ -14,3 +14,4 @@ from .set_default_param import set_default_param
 from .default_params_Pc_SDMC import default_params_Pc_SDMC
 from .get_covXcorr_parameters import get_covXcorr_parameters
 from .getLebedevSphere import getLebedevSphere
+from .jacobian_E0_to_Xt import jacobian_E0_to_Xt
