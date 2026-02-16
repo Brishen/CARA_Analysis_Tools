@@ -236,6 +236,16 @@ def Pc3D_Hall(r1, v1, C1, r2, v2, C2, HBR, params=None):
 
     bad_Texpand = False
 
+    Ncdottol = 2e-1
+    Ncsumtol = 2e-2
+    Ncdotgam = 1e-6
+    NcdotgamNeph = 51
+
+    NcdotgamNeph = max(NcdotgamNeph, round((params['Neph'] - 1) / 2))
+    Ncdotgam = max(Ncdotgam, params['gamma'])
+    x_val = np.sqrt(2) * scipy.special.erfcinv(Ncdotgam)
+    Ncdotred = np.exp(-x_val**2 / 2) / np.sqrt(2 * np.pi)
+
     if NTexpand == 0: # 0 elements -> case 0
         bad_Texpand = False
 
@@ -384,16 +394,6 @@ def Pc3D_Hall(r1, v1, C1, r2, v2, C2, HBR, params=None):
         dTeph0 = (out['Tmax'] - out['Tmin']) / 2.0
         Nrefine0 = Nrefinemax / 3.0
         dTeph0 = max(dTeph0, abs(Tmin_limit)/Nrefine0, abs(Tmax_limit)/Nrefine0)
-
-        Ncdottol = 2e-1
-        Ncsumtol = 2e-2
-        Ncdotgam = 1e-6
-        NcdotgamNeph = 51
-
-        NcdotgamNeph = max(NcdotgamNeph, round((params['Neph'] - 1) / 2))
-        Ncdotgam = max(Ncdotgam, params['gamma'])
-        x_val = np.sqrt(2) * scipy.special.erfcinv(Ncdotgam)
-        Ncdotred = np.exp(-x_val**2 / 2) / np.sqrt(2 * np.pi)
 
     elif NTexpand == 1: # case 1
         val = Texpand[0]
