@@ -312,6 +312,17 @@ if ~isfield(params,'debug_instrumentation') || isempty(params.debug_instrumentat
     params.debug_instrumentation = false;
 end
 
+if params.debug_instrumentation
+    if ~isfield(params,'debug_output_file') || isempty(params.debug_output_file)
+        params.debug_output_file = 'Pc3D_Hall_debug.txt';
+    end
+    % Clear the debug file
+    fid = fopen(params.debug_output_file, 'w');
+    if fid ~= -1
+        fclose(fid);
+    end
+end
+
 % Set any parameters that remain to be defined to their defaults, but leave
 % any that are already defined unchanged. Also calculate the Lebedev
 % quadrature unit-vectors and weights, but only as required.
@@ -391,12 +402,12 @@ Ncdottiny = 1e-300;
 % orbits by reorienting the (x,y,z) axes of the reference frame.
 if params.RetrogradeReorientation > 0
     if params.debug_instrumentation
-        dump_data('Inputs: RetrogradeReorientation', struct('r1',r1,'v1',v1,'C1',C1,'r2',r2,'v2',v2,'C2',C2,'params',params));
+        dump_data('Inputs: RetrogradeReorientation', struct('r1',r1,'v1',v1,'C1',C1,'r2',r2,'v2',v2,'C2',C2,'params',params), params.debug_output_file);
     end
     [r1,v1,C1,r2,v2,C2,RRout] = ...
         RetrogradeReorientation(r1,v1,C1,r2,v2,C2,params);
     if params.debug_instrumentation
-        dump_data('Outputs: RetrogradeReorientation', struct('r1',r1,'v1',v1,'C1',C1,'r2',r2,'v2',v2,'C2',C2,'RRout',RRout));
+        dump_data('Outputs: RetrogradeReorientation', struct('r1',r1,'v1',v1,'C1',C1,'r2',r2,'v2',v2,'C2',C2,'RRout',RRout), params.debug_output_file);
     end
     out.RetrogradeReorientation = RRout.Reoriented;
 else
@@ -405,25 +416,25 @@ end
 
 % Mean equinoctial matrices at nominal TCA for primary and secondary
 if params.debug_instrumentation
-    dump_data('Inputs: EquinoctialMatrices (Primary)', struct('r1',r1,'v1',v1,'C1',C1,'rem_flag',params.remediate_NPD_TCA_eq_covariances));
+    dump_data('Inputs: EquinoctialMatrices (Primary)', struct('r1',r1,'v1',v1,'C1',C1,'rem_flag',params.remediate_NPD_TCA_eq_covariances), params.debug_output_file);
 end
 [out.Xmean10,out.Pmean10,out.Emean10,out.Jmean10,out.Kmean10, ...
     out.Qmean10,out.Qmean10RemStat,out.Qmean10Raw,            ...
     out.Qmean10Rem,C1Rem] = EquinoctialMatrices(r1,v1,C1,     ...
     params.remediate_NPD_TCA_eq_covariances);
 if params.debug_instrumentation
-    dump_data('Outputs: EquinoctialMatrices (Primary)', struct('Xmean10',out.Xmean10,'Pmean10',out.Pmean10,'Emean10',out.Emean10,'Jmean10',out.Jmean10,'Kmean10',out.Kmean10,'Qmean10',out.Qmean10,'C1Rem',C1Rem));
+    dump_data('Outputs: EquinoctialMatrices (Primary)', struct('Xmean10',out.Xmean10,'Pmean10',out.Pmean10,'Emean10',out.Emean10,'Jmean10',out.Jmean10,'Kmean10',out.Kmean10,'Qmean10',out.Qmean10,'C1Rem',C1Rem), params.debug_output_file);
 end
 
 if params.debug_instrumentation
-    dump_data('Inputs: EquinoctialMatrices (Secondary)', struct('r2',r2,'v2',v2,'C2',C2,'rem_flag',params.remediate_NPD_TCA_eq_covariances));
+    dump_data('Inputs: EquinoctialMatrices (Secondary)', struct('r2',r2,'v2',v2,'C2',C2,'rem_flag',params.remediate_NPD_TCA_eq_covariances), params.debug_output_file);
 end
 [out.Xmean20,out.Pmean20,out.Emean20,out.Jmean20,out.Kmean20, ...
     out.Qmean20,out.Qmean20RemStat,out.Qmean20Raw,            ...
     out.Qmean20Rem,C2Rem] = EquinoctialMatrices(r2,v2,C2,     ...
     params.remediate_NPD_TCA_eq_covariances);
 if params.debug_instrumentation
-    dump_data('Outputs: EquinoctialMatrices (Secondary)', struct('Xmean20',out.Xmean20,'Pmean20',out.Pmean20,'Emean20',out.Emean20,'Jmean20',out.Jmean20,'Kmean20',out.Kmean20,'Qmean20',out.Qmean20,'C2Rem',C2Rem));
+    dump_data('Outputs: EquinoctialMatrices (Secondary)', struct('Xmean20',out.Xmean20,'Pmean20',out.Pmean20,'Emean20',out.Emean20,'Jmean20',out.Jmean20,'Kmean20',out.Kmean20,'Qmean20',out.Qmean20,'C2Rem',C2Rem), params.debug_output_file);
 end
 
 % Return unconverged if any equinoctial elements are undefined
@@ -470,12 +481,12 @@ end
 % Calculate the linear-trajectory conjunction bounds (tau0,tau1)
 % for the specified value(s) of gamma, as described in C12b.
 if params.debug_instrumentation
-    dump_data('Inputs: conj_bounds_Coppola', struct('gamma',params.gamma,'HBR',HBR,'r',r,'v',v,'C',C));
+    dump_data('Inputs: conj_bounds_Coppola', struct('gamma',params.gamma,'HBR',HBR,'r',r,'v',v,'C',C), params.debug_output_file);
 end
 [out.tau0,out.tau1,out.tau0_gam1,out.tau1_gam1] = ...
     conj_bounds_Coppola(params.gamma,HBR,r,v,C,params.verbose);
 if params.debug_instrumentation
-    dump_data('Outputs: conj_bounds_Coppola', struct('tau0',out.tau0,'tau1',out.tau1,'tau0_gam1',out.tau0_gam1,'tau1_gam1',out.tau1_gam1));
+    dump_data('Outputs: conj_bounds_Coppola', struct('tau0',out.tau0,'tau1',out.tau1,'tau0_gam1',out.tau0_gam1,'tau1_gam1',out.tau1_gam1), params.debug_output_file);
 end
 
 % Check for good values of (tau0,tau1), because many important 
@@ -812,19 +823,19 @@ out.Teph = linspace(out.Tmin,out.Tmax,out.Neph);
 
 % Calc pos/vel mean states and associated Jacobians at all ephemeris times
 if params.debug_instrumentation
-    dump_data('Inputs: jacobian_E0_to_Xt (Primary)', struct('Teph',out.Teph,'Emean10',out.Emean10));
+    dump_data('Inputs: jacobian_E0_to_Xt (Primary)', struct('Teph',out.Teph,'Emean10',out.Emean10), params.debug_output_file);
 end
 [out.Jmean1T,out.Xmean1T] = jacobian_E0_to_Xt(out.Teph,out.Emean10);
 if params.debug_instrumentation
-    dump_data('Outputs: jacobian_E0_to_Xt (Primary)', struct('Jmean1T',out.Jmean1T,'Xmean1T',out.Xmean1T));
+    dump_data('Outputs: jacobian_E0_to_Xt (Primary)', struct('Jmean1T',out.Jmean1T,'Xmean1T',out.Xmean1T), params.debug_output_file);
 end
 
 if params.debug_instrumentation
-    dump_data('Inputs: jacobian_E0_to_Xt (Secondary)', struct('Teph',out.Teph,'Emean20',out.Emean20));
+    dump_data('Inputs: jacobian_E0_to_Xt (Secondary)', struct('Teph',out.Teph,'Emean20',out.Emean20), params.debug_output_file);
 end
 [out.Jmean2T,out.Xmean2T] = jacobian_E0_to_Xt(out.Teph,out.Emean20);
 if params.debug_instrumentation
-    dump_data('Outputs: jacobian_E0_to_Xt (Secondary)', struct('Jmean2T',out.Jmean2T,'Xmean2T',out.Xmean2T));
+    dump_data('Outputs: jacobian_E0_to_Xt (Secondary)', struct('Jmean2T',out.Jmean2T,'Xmean2T',out.Xmean2T), params.debug_output_file);
 end
 
 % Initialize output arrays
@@ -872,14 +883,14 @@ while still_refining
             % Calculate the POP
             PAR.verbose = false;
             if (neph == 1) && params.debug_instrumentation
-                 dump_data('Inputs: PeakOverlapPos (neph=1)', struct('Teph',out.Teph(neph),'Xmean1T',out.Xmean1T(:,neph),'Jmean1T',out.Jmean1T(:,:,neph),'Emean10',out.Emean10,'Qmean10',out.Qmean10,'Xmean2T',out.Xmean2T(:,neph),'Jmean2T',out.Jmean2T(:,:,neph),'Emean20',out.Emean20,'Qmean20',out.Qmean20,'H',H,'PAR',PAR));
+                 dump_data('Inputs: PeakOverlapPos (neph=1)', struct('Teph',out.Teph(neph),'Xmean1T',out.Xmean1T(:,neph),'Jmean1T',out.Jmean1T(:,:,neph),'Emean10',out.Emean10,'Qmean10',out.Qmean10,'Xmean2T',out.Xmean2T(:,neph),'Jmean2T',out.Jmean2T(:,:,neph),'Emean20',out.Emean20,'Qmean20',out.Qmean20,'H',H,'PAR',PAR), params.debug_output_file);
             end
             [converged,~,~,~,POP] = PeakOverlapPos(out.Teph(neph), ...
                 out.Xmean1T(:,neph),out.Jmean1T(:,:,neph),0,out.Emean10,out.Qmean10, ...
                 out.Xmean2T(:,neph),out.Jmean2T(:,:,neph),0,out.Emean20,out.Qmean20, ...
                 H,PAR);
             if (neph == 1) && params.debug_instrumentation
-                 dump_data('Outputs: PeakOverlapPos (neph=1)', struct('converged',converged,'POP',POP));
+                 dump_data('Outputs: PeakOverlapPos (neph=1)', struct('converged',converged,'POP',POP), params.debug_output_file);
             end
             % if ~converged
             %     keyboard;
@@ -928,11 +939,11 @@ while still_refining
                 % submatrices, and calculate related quantities
                 As = Ps(1:3,1:3); Bs = Ps(4:6,1:3); Cs = Ps(4:6,4:6);
                 if (neph == 1) && params.debug_instrumentation
-                     dump_data('Inputs: CovRemEigValClip (neph=1)', struct('As',As,'Lclip',Lclip));
+                     dump_data('Inputs: CovRemEigValClip (neph=1)', struct('As',As,'Lclip',Lclip), params.debug_output_file);
                 end
                 [~,~,~,~,~,Asdet,Asinv] = CovRemEigValClip(As,Lclip);
                 if (neph == 1) && params.debug_instrumentation
-                     dump_data('Outputs: CovRemEigValClip (neph=1)', struct('Asdet',Asdet,'Asinv',Asinv));
+                     dump_data('Outputs: CovRemEigValClip (neph=1)', struct('Asdet',Asdet,'Asinv',Asinv), params.debug_output_file);
                 end
                 Ns0 = nthroot(twopicubed*Asdet,-2);
                 bs = Bs*Asinv; Csp = Cs-bs*Bs'; 
@@ -2060,16 +2071,39 @@ end
 
 % =========================================================================
 
-function dump_data(label, data)
+function dump_data(label, data, filename)
 
-disp(['=== ' label ' ===']);
-f = fieldnames(data);
-for i = 1:length(f)
-    val = data.(f{i});
-    disp(['--- ' f{i} ' ---']);
-    disp(val);
+if nargin < 3 || isempty(filename)
+    % Just dispense to console if no file provided
+    disp(['=== ' label ' ===']);
+    f = fieldnames(data);
+    for i = 1:length(f)
+        val = data.(f{i});
+        disp(['--- ' f{i} ' ---']);
+        disp(val);
+    end
+    disp(['=== End ' label ' ===']);
+else
+    % Output to file
+    fid = fopen(filename, 'a');
+    if fid == -1
+        return;
+    end
+    fprintf(fid, '=== %s ===\n', label);
+    f = fieldnames(data);
+    for i = 1:length(f)
+        val = data.(f{i});
+        fprintf(fid, '--- %s ---\n', f{i});
+        try
+            str = evalc('disp(val)');
+        catch
+            str = 'Error displaying value';
+        end
+        fprintf(fid, '%s\n', str);
+    end
+    fprintf(fid, '=== End %s ===\n', label);
+    fclose(fid);
 end
-disp(['=== End ' label ' ===']);
 
 return;
 end
