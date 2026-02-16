@@ -353,6 +353,33 @@ def Pc3D_Hall(r1, v1, C1, r2, v2, C2, HBR, params=None):
         out['Tmin_limit'] = Tmin_limit
         out['Tmax_limit'] = Tmax_limit
 
+        # Check linearity of relative motion at the Coppola boundary
+        # If curvature is significant, expand to full geometric limits
+        if (params['Tmin_initial'] is None) and (params['Tmax_initial'] is None):
+            tau_chk = out['tau1']
+            r_lin_chk = (r + v * tau_chk).flatten()
+
+            _, X1_chk = jacobian_E0_to_Xt(tau_chk, out['Emean10'])
+            _, X2_chk = jacobian_E0_to_Xt(tau_chk, out['Emean20'])
+            r_kep_chk = (X2_chk[0:3, 0] - X1_chk[0:3, 0]) * 1000.0  # km to m
+
+            dist_diff = np.linalg.norm(r_kep_chk - r_lin_chk)
+            threshold = max(0.01, 0.01 * HBR)
+
+            if dist_diff > threshold:
+                if params['verbose']:
+                    print(f"Pc3D_Hall: Linear bounds untrustworthy (diff={dist_diff:.4f}m > {threshold:.4f}m). Expanding limits.")
+
+                params['Tmin_initial'] = Tmin_limit
+                params['Tmax_initial'] = Tmax_limit
+
+                # Boost Neph to maintain resolution
+                time_ratio = (Tmax_limit - Tmin_limit) / (out['tau1'] - out['tau0'])
+                if time_ratio > 1.5:
+                    params['Neph'] = int(params['Neph'] * time_ratio)
+                    if params['verbose']:
+                        print(f"Pc3D_Hall: Boosted Neph to {params['Neph']}.")
+
         # Initial duration bounds
         if params['Tmin_initial'] is None:
              Tmin_initial = out['tau0']

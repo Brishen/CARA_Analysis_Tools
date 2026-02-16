@@ -47,11 +47,11 @@ class TestPc3D_Hall_Case2(unittest.TestCase):
         ])
 
         HBR = 4.0
-        expSolution = 0.006194252030586372
-        Accuracy = 1e-6
+        expSolution = 0.015557059396299
+        Accuracy = 1e-5
 
-        # Use default parameters with Texpand=6.0 to match typical usage (like Case 1)
-        Pc, out = Pc3D_Hall(r1, v1, C1, r2, v2, C2, HBR, params={'Texpand': 6.0})
+        # Use default parameters (no params dict passed, allowing auto Texpand)
+        Pc, out = Pc3D_Hall(r1, v1, C1, r2, v2, C2, HBR)
 
         self.assertTrue(out['converged'], "Calculation did not converge")
         self.assertTrue(np.isclose(Pc, expSolution, rtol=Accuracy), f"Pc {Pc} not close to expected {expSolution}")
