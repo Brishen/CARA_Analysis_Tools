@@ -1272,7 +1272,10 @@ def _add_eph_times(Tnew, out, need_eph_calc):
     return out, need_eph_calc
 
 def dump_data(label, data, filename):
+    import sys
     try:
+        # Set print options to avoid truncation of large arrays
+        np.set_printoptions(threshold=sys.maxsize, linewidth=np.inf)
         with open(filename, 'a') as f:
             f.write(f"=== {label} ===\n")
             for key, val in data.items():
@@ -1281,6 +1284,8 @@ def dump_data(label, data, filename):
                 # For numpy arrays, default str() is decent.
                 f.write(f"{val}\n")
             f.write(f"=== End {label} ===\n")
+        # Reset print options to default (optional but polite)
+        np.set_printoptions(threshold=1000, linewidth=75)
     except Exception as e:
         # Fallback to console if file write fails, or just ignore?
         # MATLAB version catches evalc errors but might not catch file open errors in the same way.
