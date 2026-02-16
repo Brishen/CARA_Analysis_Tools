@@ -488,6 +488,7 @@ def Pc3D_Hall(r1, v1, C1, r2, v2, C2, HBR, params=None):
     need_eph_calc = np.full(out['Neph'], True, dtype=bool)
 
     while still_refining:
+        neph_loop_start = out['Neph']
 
         if params['verbose']:
             print(f"Neph = {out['Neph']} nrefine = {nrefine} need = {np.sum(need_eph_calc)}")
@@ -817,7 +818,10 @@ def Pc3D_Hall(r1, v1, C1, r2, v2, C2, HBR, params=None):
                                  out, need_eph_calc = _add_eph_times(Tnew, out, need_eph_calc)
 
             if still_refining:
-                nrefine += 1
+                if out['Neph'] == neph_loop_start:
+                    still_refining = False
+                else:
+                    nrefine += 1
 
             if nrefine > Nrefinemax:
                 still_refining = False
